@@ -37,17 +37,19 @@ for (i in 1:nrow(results)) {
 
 # Print summary results
 seltd <- filter(tedata, selected > 0)
-seltot <- nrow(seltd)
 selmean <- mean(seltd$score)
-testtot <- nrow(tedata)
-testmean <- mean(tedata$score)
+nonseltd <- filter(tedata, selected == 0)
+nonselmean <- mean(nonseltd$score)
 
-print(paste("Full Test Set mean = ", round(testmean)))
+print(paste("Non Selected mean = ", round(nonselmean)))
 print(paste("Only Selected mean = ", round(selmean)))
 for (i in 1:nrow(results)) {
     print(paste("Rule:", i, " = ", round(mean(filter(seltd, selected == i)$score))))
 }
 print(results)
+
+print(t.test(seltd$score, nonseltd$score,
+             alternative="two.sided",paired=FALSE,var.equal=TRUE)$conf)
 
 
 
