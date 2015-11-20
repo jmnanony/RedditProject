@@ -1,0 +1,105 @@
+---
+title: "Regression Models - Analysis of MPG in mtcars Data Set"
+author: "M. Nelson"
+date: "November 18, 2015"
+output: html_document
+---
+
+## Executive Summary
+The purpose of this project is to explore the relationship between miles per gallon (MPG) and the set of variables available in the mtcars data set. The goal is specifically to address these two questions:
+
+1) "Is an automatic or manual transmission better for MPG"
+2) "Quantify the MPG difference between automatic and manual transmissions"
+
+## Exploratory Data Analysis
+The first exploratory check is a T-test of a null hypothesis that there is no difference between automatic or manual transmissions:
+```{r, echo=FALSE, message=F, warning=F, quietly=TRUE}
+library(dplyr)
+library(ggplot2)
+data("mtcars")
+ampg <- mtcars %>% filter(am == 0) %>% select(mpg)
+mmpg <- mtcars %>% filter(am == 1) %>% select(mpg)
+t.test(mmpg, ampg, alternative="two.sided", paired=FALSE)$conf
+```
+
+Looking at transmission type alone would reject that null hypothesis and suggest that manual transmission provides 3-11 better MPG than automatic.
+
+However, intuition suggests that other variable such as weight of the car may be strongly correlated with MPG. A second exploratory check in Figure 1 shows at some weights (see the indicated range), that automatics appear to have better MPG than manuals. So it is important to build a more complete model considering additional variables of the data set. Then check again under that improved model whether manual transmission still indicates higher MPG than automatic.
+
+## Coefficient Interpretation
+Fitting all variable in mtcars to the output of mpg provides the set of coefficients shown in Figure 2. Scanning the p-values shows that wt, am, and qsec have the lowest values and are thus most statistically significant when considering all variables The corresponding slope coefficients are -3.7(wt), 2.5(am), and 0.8(qsec). These indicate that mpg will decrease 3.7 for each 1,000 lb increase in weight. Also that moving from automatic to manual will increase mpg by 2.5. And finally that mpg will increase by 0.8 for every additional second it takes the car to run a quarter mile. This also seems intuitively correct as the faster a car goes, the more quickly it may burn gas resulting in lower mpg.
+
+***
+
+## Model Selection
+Model selection will use a nested likelihood ratio test to select which variables to include. This will compare four fitted models:
+
+1) am (only the transmission variable.)
+2) am + wt + qsec (The suspected best set based on the p-value analysis above.)
+3) am + wt + qsec + hp (Adding in hp which had the next lowest p-value.)
+4) . (All available variables.)
+
+Figure 3 indicates that using only the am+wt+qsec variables gives a very low p-value (8.025e-08). But adding the hp variable has a much higher p-value (.265) and all variables even higher (0.9308). So the model chosen is the one that includes only transmission, weight, and quarter mile seconds.
+
+## Residual Diagnostics
+Figure 4 is a series of plots to diagnose residuals. In the standardized residual plot, there seems to be a slight upward sloping trend in the size of the residual value as the fitted values of mpg increases. This could indicate that some other variable not available in this data set is influencing this trend. However, the residuals versus leverage chart shows that these data points are well-behaved within this model. None exert unusually high influence to the model as measured against the Cook's Distance line plotted at 0.5. 
+
+## Conclusions and Uncertainty
+With the selected model, the fitted coefficients are shown here:
+```{r, echo=FALSE}
+fit3 <- lm(mpg ~ am + wt + qsec , data = mtcars)
+summary(fit3)$coeff
+```
+This indicates that moving from automatic to manual transmission gives an increase of 2.9 MPG. The p-value for the transmission variable is 0.047. This is outside the 95% confidence interval of the null hypothesis that there is no difference in MPG due to transmission type. The null hypothesis is thus rejected and the analysis concludes that manual transmissions provide better MPG than automatic.
+
+Responses to the specific questions of this project:
+
+1) "Is an automatic or manual transmission better for MPG"
+
+    Manual transmission generally provides a higher MPG than automatic transmission.
+
+2) "Quantify the MPG difference between automatic and manual transmissions"
+
+    Within a model that also includes wt and qsec, moving from automatic to manual transmission is expected to increase MPG by 2.9.
+
+***
+
+## Appendix
+###Figure 1:
+
+```{r, echo=FALSE, fig.width=4, fig.height=2.3, fig.align='left'}
+g <- ggplot(mtcars, aes(y = mpg, x = wt, colour = factor(am)))
+g <- g + geom_point()
+g <- g + geom_vline(xintercept = 2.4, size = 0.5, colour = "black", linetype = 3)
+g <- g + geom_vline(xintercept = 3.4, size = 0.5, colour = "black", linetype = 3)
+g <- g + xlab("Weight (1000 lbs)") + ylab("MPG")
+print(g)
+```
+
+###Figure 2:
+
+```{r, echo=FALSE}
+fit <- lm(mpg ~ . , data = mtcars)
+summary(fit)$coeff
+```
+
+
+###Figure 3:
+
+```{r, echo=FALSE}
+fit1 <- lm(mpg ~ am , data = mtcars)
+fit3 <- lm(mpg ~ am + wt + qsec , data = mtcars)
+fit4 <- lm(mpg ~ am + wt + qsec + hp, data = mtcars)
+fit10 <- lm(mpg ~ . , data = mtcars)
+anova(fit1, fit3, fit4, fit10)
+```
+
+
+###Figure 4:
+
+```{r, echo=FALSE, fig.height=8}
+par(mfrow = c(2,2))
+plot(fit3)
+```
+
+
